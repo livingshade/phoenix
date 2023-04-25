@@ -2365,11 +2365,14 @@ dependencies = [
 name = "rpc_echo"
 version = "0.1.0"
 dependencies = [
+ "env_logger",
+ "log",
  "mrpc",
  "mrpc-build",
  "prost",
  "smol",
  "structopt",
+ "time 0.3.16",
 ]
 
 [[package]]

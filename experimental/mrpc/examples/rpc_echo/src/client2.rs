@@ -4,16 +4,24 @@ pub mod rpc_hello {
     // include!("../../../mrpc/src/codegen.rs");
 }
 
+use env_logger;
+use env_logger::{Builder, Env};
 use rpc_hello::greeter_client::GreeterClient;
 use rpc_hello::HelloRequest;
 use std::{thread, time::Duration, time::Instant};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    log::set_max_level(log::LevelFilter::Info);
+    let env = Env::new().filter_or("RUST_LOG", "info");
+    env_logger::init_from_env(env);
+
     let client = GreeterClient::connect("localhost:5000")?;
+    log::info!("Client Connected!");
+
     let mut apple_count = 0;
     let mut banana_count = 0;
     let mut last_print_time = Instant::now();
-    let interval = Duration::from_secs(5);
+    let interval = Duration::from_secs(4);
     let mut i = 0;
     loop {
         i = i ^ 1;
@@ -35,8 +43,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     banana_count += 1;
                 }
             }
-            Err(e) => {
-                println!("error: {}", e);
+            Err(_e) => {
+                //println!("error: {}", e);
             }
         }
 
@@ -44,10 +52,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let elapsed = Instant::now().duration_since(last_print_time);
         if elapsed >= interval {
-            println!(
-                "Apple count: {}, Banana count: {}",
-                apple_count, banana_count
-            );
+            log::info!("Apple  count: {}", apple_count);
+            log::info!("Banana count: {}", banana_count);
+            apple_count = 0;
+            banana_count = 0;
             last_print_time = Instant::now();
         }
     }

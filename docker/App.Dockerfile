@@ -41,3 +41,14 @@ RUN cargo make
 RUN cargo build --release --workspace -p rpc_echo
 WORKDIR /phoenix
 RUN cargo make deploy-plugins
+
+FROM ubuntu:22.04
+
+WORKDIR /phoenix
+
+RUN apt update && apt install libnuma-dev -y
+
+COPY --from=build /phoenix/experimental/mrpc/target/release/rpc_echo_client .
+COPY --from=build /phoenix/experimental/mrpc/target/release/rpc_echo_client2 .
+COPY --from=build /phoenix/experimental/mrpc/target/release/rpc_echo_server .
+COPY --from=build /phoenix/experimental/mrpc/target/release/rpc_echo_frontend .
