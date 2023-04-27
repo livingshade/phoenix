@@ -1500,7 +1500,13 @@ impl FingerprintDirGuard {
                 format!("Failed to remove .fingerprint directory: {}", to.display(),)
             })?;
         }
-        Self::copy_dir_recursively(from, to)?;
+        Self::copy_dir_recursively(from, to).with_context(|| {
+            format!(
+                "Failed to copy .fingerprint directory from {} to {}",
+                from.display(),
+                to.display(),
+            )
+        })?;
         fs::remove_dir_all(&from).with_context(|| {
             format!(
                 "Failed to remove .fingerprint directory: {}",

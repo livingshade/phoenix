@@ -21,7 +21,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut apple_count = 0;
     let mut banana_count = 0;
     let mut last_print_time = Instant::now();
+    let mut last_send_time = Instant::now();
     let interval = Duration::from_secs(4);
+    let sleep_interval = Duration::from_millis(250);
     let mut i = 0;
     loop {
         i = i ^ 1;

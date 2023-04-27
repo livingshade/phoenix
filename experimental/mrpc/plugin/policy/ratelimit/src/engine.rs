@@ -31,6 +31,8 @@ pub(crate) struct RateLimitEngine {
     pub(crate) config: RateLimitConfig,
     // The most recent timestamp we add the token to the bucket.
     pub(crate) last_ts: Instant,
+    // The compensation of detach
+    pub(crate) compensation: f64,
     // The number of available tokens in the token bucket algorithm.
     pub(crate) num_tokens: f64,
     // The queue to buffer the requests that cannot be sent immediately.
@@ -84,11 +86,11 @@ impl Decompose for RateLimitEngine {
                 work += n;
             }
         }
-        while !self.queue.is_empty() {
-            let msg = self.queue.pop_front().unwrap();
-            self.tx_outputs()[0].send(EngineTxMessage::RpcMessage(msg))?;
-            work += 1;
-        }
+        // while !self.queue.is_empty() {
+        //     let msg = self.queue.pop_front().unwrap();
+        //     self.tx_outputs()[0].send(EngineTxMessage::RpcMessage(msg))?;
+        //     work += 1;
+        // }
         Ok(work)
     }
 
@@ -98,10 +100,12 @@ impl Decompose for RateLimitEngine {
         _global: &mut ResourceCollection,
     ) -> (ResourceCollection, DataPathNode) {
         let engine = *self;
-
+        let now = Instant::now();
+        let dura = now - self.last_ts;
+        let compensation = 0.0;
         let mut collections = ResourceCollection::with_capacity(4);
         collections.insert("config".to_string(), Box::new(engine.config));
-        collections.insert("last_ts".to_string(), Box::new(engine.last_ts));
+        collections.insert("compensation".to_string(), Box::new(compensation));
         collections.insert("num_tokens".to_string(), Box::new(engine.num_tokens));
         collections.insert("queue".to_string(), Box::new(engine.queue));
         (collections, engine.node)
@@ -119,10 +123,11 @@ impl RateLimitEngine {
             .unwrap()
             .downcast::<RateLimitConfig>()
             .map_err(|x| anyhow!("fail to downcast, type_name={:?}", x.type_name()))?;
-        let last_ts = *local
-            .remove("last_ts")
+        let last_ts = Instant::now();
+        let compensation = *local
+            .remove("compensation")
             .unwrap()
-            .downcast::<Instant>()
+            .downcast::<f64>()
             .map_err(|x| anyhow!("fail to downcast, type_name={:?}", x.type_name()))?;
         let num_tokens = *local
             .remove("num_tokens")
@@ -140,6 +145,7 @@ impl RateLimitEngine {
             indicator: Default::default(),
             config,
             last_ts,
+            compensation,
             num_tokens,
             queue,
         };
@@ -182,8 +188,9 @@ impl RateLimitEngine {
         let config = &self.config;
         let requests_per_sec = config.requests_per_sec;
         let bucket_size = config.bucket_size as usize;
-        if dura.as_secs_f64() * requests_per_sec as f64 >= 1.0 {
+        if (dura.as_secs_f64() * requests_per_sec as f64 + self.compensation) >= 1.0 {
             self.num_tokens += dura.as_secs_f64() * requests_per_sec as f64;
+            self.compensation = 0.0;
             if self.num_tokens > bucket_size as f64 {
                 self.num_tokens = bucket_size as f64;
             }
