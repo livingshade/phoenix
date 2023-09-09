@@ -3,8 +3,6 @@ use std::pin::Pin;
 
 use futures::future::BoxFuture;
 
-pub use crate::PhoenixResult;
-
 pub mod future;
 
 pub mod datapath;
@@ -12,6 +10,33 @@ pub use datapath::node::Vertex;
 
 pub mod decompose;
 pub use decompose::{Decompose, DecomposeResult};
+use semver::Op;
+use serde::{Deserialize, Serialize};
+
+use crate::PhoenixResult;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CommandSignal {
+    Init(OpaqueParam),
+    Running(OpaqueParam),
+    Send(EngineType, OpaqueParam),
+    Recv(EngineType, OpaqueParam),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OpaqueParam {
+    pub data: String,
+}
+
+impl OpaqueParam {
+    pub fn new(data: String) -> Self {
+        OpaqueParam { data }
+    }
+
+    pub fn to_struct<'a, T: Serialize + Deserialize<'a>>(&'a self) -> T {
+        serde_json::from_str(&self.data).unwrap()
+    }
+}
 
 pub type EngineResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -51,6 +76,11 @@ pub trait Engine: Decompose + Send + Vertex + Unpin + 'static {
         Ok(())
     }
 
+    /// Handle command sent by the network operator.
+    #[inline]
+    fn handle_command(&mut self, _command: CommandSignal) -> PhoenixResult<()> {
+        Ok(())
+    }
     /// NOTE(wyj): temporary API
     /// engines should not have thread/runtime local states in the fugture
     /// Preform preparatory work before detaching the engine from runtime

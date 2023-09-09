@@ -15,6 +15,7 @@ pub mod engine;
 pub mod envelop;
 pub mod local_resource;
 
+pub mod msg_bus;
 pub mod page_padded;
 pub mod resource;
 pub mod state_mgr;
