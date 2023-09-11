@@ -2129,6 +2129,8 @@ dependencies = [
  "phoenix-api-mrpc",
  "phoenix-common-workspace",
  "semver 1.0.14",
+ "serde",
+ "serde_json",
  "sharded-slab",
  "static_assertions",
  "thiserror",

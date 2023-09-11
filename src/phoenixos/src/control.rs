@@ -559,6 +559,11 @@ impl Control {
                 )?;
                 Ok(())
             }
+            control::Request::CommandSignal(request) => {
+                log::info!("Receive command signal request from phoenixctl");
+                log::info!("request: {:?}", request);
+                Ok(())
+            }
         }
     }
 

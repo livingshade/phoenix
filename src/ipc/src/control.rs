@@ -78,6 +78,12 @@ pub struct AddonRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandSignalRequest {
+    pub engine_type: String,
+    pub param: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Request {
     /// New service subscription, scheduling mode, service name, and an optional config string
     NewClient(SchedulingHint, String, Option<String>),
@@ -91,6 +97,8 @@ pub enum Request {
     DetachAddon(AddonRequest),
     /// Upgrade modules or plugins
     Upgrade(UpgradeRequest),
+    /// Command singals for engines
+    CommandSignal(CommandSignalRequest),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
