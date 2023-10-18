@@ -79,6 +79,7 @@ members = [
   "examples/masstree_analytics",
   "examples/hotel_reservation",
   "examples/load_balancer",
+  "examples/cache",
   # "examples/hotel_microservices",
 ]
 exclude = ["3rdparty/prost"]

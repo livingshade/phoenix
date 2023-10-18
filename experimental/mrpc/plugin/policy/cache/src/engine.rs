@@ -5,6 +5,7 @@ use std::ptr::Unique;
 
 use anyhow::{anyhow, Result};
 use futures::future::BoxFuture;
+use futures::SinkExt;
 
 use phoenix_api::rpc::{RpcId, StatusCode};
 use phoenix_api_policy_cache::control_plane;
@@ -181,58 +182,7 @@ impl CacheEngine {
         // forward all rx msgs
         match self.rx_inputs()[0].try_recv() {
             Ok(m) => {
-                match m {
-                    EngineRxMessage::Ack(rpc_id, _status) => {
-                        if let Ok(()) = self.meta_buf_pool.release(rpc_id) {
-                            // log::info!(
-                            //     "Access denied ack received, rpc_id: {:?} metabuf released",
-                            //     rpc_id
-                            // );
-                        } else {
-                            // log::info!("release failed!: {:?}", rpc_id);
-                            self.rx_outputs()[0].send(m)?;
-                        }
-                    }
-                    EngineRxMessage::RpcMessage(msg) => {
-                        //log::debug!("CacheEngine: rx msg_meta: {:?}", msg.meta);
-                        // check whether the request should be blocked
-                        let private_req = materialize_rx(&msg);
-                        if should_block(&private_req) {
-                            // We need to copy meta, add it to meta_buf_pool, and send it as the tx msg
-                            // Is there better way to do this and avoid unsafe?
-                            let mut meta = unsafe { msg.meta.as_ref().clone() };
-                            meta.status_code = StatusCode::AccessDenied;
-                            let mut meta_ptr = self
-                                .meta_buf_pool
-                                .obtain(RpcId(meta.conn_id, meta.call_id))
-                                .expect("meta_buf_pool is full");
-                            unsafe {
-                                meta_ptr.as_meta_ptr().write(meta);
-                                meta_ptr.0.as_mut().num_sge = 0;
-                                meta_ptr.0.as_mut().value_len = 0;
-                            }
-                            let rpc_msg = RpcMessageTx {
-                                meta_buf_ptr: meta_ptr,
-                                addr_backend: 0,
-                            };
-                            let new_msg = EngineTxMessage::RpcMessage(rpc_msg);
-                            self.tx_outputs()[0]
-                                .send(new_msg)
-                                .expect("send new message error");
-                            let msg_call_ids =
-                                [meta.call_id, meta.call_id, meta.call_id, meta.call_id];
-                            self.tx_outputs()[0].send(EngineTxMessage::ReclaimRecvBuf(
-                                meta.conn_id,
-                                msg_call_ids,
-                            ))?;
-                        } else {
-                            self.rx_outputs()[0].send(EngineRxMessage::RpcMessage(msg))?;
-                        }
-                    }
-                    EngineRxMessage::RecvError(_, _) => {
-                        self.rx_outputs()[0].send(m)?;
-                    }
-                }
+                self.rx_outputs()[0].send(m)?;
                 return Ok(Progress(1));
             }
             Err(TryRecvError::Empty) => {}

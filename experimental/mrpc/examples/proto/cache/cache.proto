@@ -24,10 +24,10 @@ service Cache {
 
 // The request message containing the user's name.
 message Key {
-  byte k = 1;
+  bytes key = 1;
 }
 
 // The response message containing the greetings
 message Value {
-  byte v = 1;
+  bytes value = 1;
 }
