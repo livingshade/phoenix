@@ -15,7 +15,7 @@ use mrpc_marshal::{ExcavateContext, SgE, SgList};
 use phoenix_api::buf::Range;
 use phoenix_api::engine::SchedulingMode;
 use phoenix_api::net::{MappedAddrStatus, WcOpcode, WcStatus};
-use phoenix_api::rpc::{MessageMeta, RpcId, StatusCode, TransportStatus};
+use phoenix_api::rpc::{MessageMeta, RpcId, RpcMsgType, StatusCode, TransportStatus};
 use phoenix_api::transport::tcp::dp::Completion;
 use phoenix_api::{AsHandle, Handle};
 use phoenix_api_mrpc::cmd::{ConnectResponse, ReadHeapRegion};
@@ -381,6 +381,11 @@ impl TcpRpcAdapterEngine {
         let off = meta_buf_ptr.0.as_ptr().expose_addr();
         let meta_buf = unsafe { meta_buf_ptr.0.as_mut() };
 
+        if meta_ref.msg_type == RpcMsgType::BackendResponse
+            || meta_ref.msg_type == RpcMsgType::BackendRequest
+        {
+            panic!("backend type should not go to adapter level!")
+        }
         // TODO(cjr): impl Serialize for SgList
         // Serialize the sglist
         // write the lens to MetaBuffer
@@ -424,6 +429,11 @@ impl TcpRpcAdapterEngine {
             .get(&meta_ref.conn_id)
             .ok_or(ResourceError::NotFound)?;
 
+        if meta_ref.msg_type == RpcMsgType::BackendResponse
+            || meta_ref.msg_type == RpcMsgType::BackendRequest
+        {
+            panic!("backend type should not go to adapter level!")
+        }
         let call_id = meta_ref.call_id;
         let sock_handle = conn_ctx.sock_handle;
 
@@ -567,6 +577,11 @@ impl TcpRpcAdapterEngine {
             addr_arbiter: &self.state.resource().addr_map,
         };
 
+        if meta.msg_type == RpcMsgType::BackendResponse
+            || meta.msg_type == RpcMsgType::BackendRequest
+        {
+            panic!("backend type should not go to adapter level!")
+        }
         let (addr_app, addr_backend) = match meta.status_code {
             StatusCode::Success => {
                 if let Some(ref module) = self.serialization_engine {

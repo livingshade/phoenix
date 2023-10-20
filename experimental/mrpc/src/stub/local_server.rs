@@ -320,7 +320,7 @@ impl LocalServer {
         match *comp {
             dp::Completion::Incoming(request) => {
                 match request.meta.msg_type {
-                    RpcMsgType::Request => {
+                    RpcMsgType::NetRequest => {
                         // server receives requests
                         // todo!("do something with the request");
                         let service_id = request.meta.service_id;
@@ -339,7 +339,21 @@ impl LocalServer {
                             }
                         }
                     }
-                    RpcMsgType::Response => {
+                    RpcMsgType::BackendRequest => {
+                        let service_id = request.meta.service_id;
+                        match self.routes.get(&service_id) {
+                            Some(s) => {
+                                todo!();
+                                // let read_heap =
+                                // let task = LocalFutureObj::new(s.call(request, read_heap));
+                                // running.push(task);
+                            }
+                            None => {
+                                log::warn!("unrecognized request: {:?}", request);
+                            }
+                        }
+                    }
+                    RpcMsgType::NetResponse | RpcMsgType::BackendResponse => {
                         // client receives responses, update the ReplyCache
                         panic!("impossible, something is wrong")
                     }

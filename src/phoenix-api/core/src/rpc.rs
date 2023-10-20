@@ -28,8 +28,10 @@ impl From<Token> for usize {
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RpcMsgType {
-    Request,
-    Response,
+    NetRequest,
+    NetResponse,
+    BackendRequest,
+    BackendResponse,
 }
 
 /// An `u64` associated with an RPC.

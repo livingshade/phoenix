@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use anyhow::{bail, Result};
 use nix::unistd::Pid;
 
@@ -26,11 +28,12 @@ impl CacheEngineBuilder {
     }
 
     fn build(self) -> Result<CacheEngine> {
-        const META_BUFFER_POOL_CAP: usize = 128;
+        let META_POOL_CAP = 1024;
         Ok(CacheEngine {
             node: self.node,
             indicator: Default::default(),
-            meta_buf_pool: MetaBufferPool::new(META_BUFFER_POOL_CAP),
+            buffer: BTreeMap::new(),
+            meta_pool: MetaBufferPool::new(META_POOL_CAP),
             config: self.config,
         })
     }

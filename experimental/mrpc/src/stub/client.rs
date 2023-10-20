@@ -127,7 +127,7 @@ impl ClientStub {
             func_id,
             call_id,
             token: req.token().0 as u64,
-            msg_type: RpcMsgType::Request,
+            msg_type: RpcMsgType::NetRequest,
             status_code: phoenix_api::rpc::StatusCode::Success,
         };
 
@@ -157,11 +157,11 @@ impl ClientStub {
             dp::Completion::Incoming(msg) => {
                 let call_id = msg.meta.call_id;
                 match msg.meta.msg_type {
-                    RpcMsgType::Request => {
+                    RpcMsgType::NetRequest | RpcMsgType::BackendRequest => {
                         // server receives requests
                         panic!("impossible, something is wrong")
                     }
-                    RpcMsgType::Response => {
+                    RpcMsgType::NetResponse | RpcMsgType::BackendResponse => {
                         // client receives responses, update the ReplyCache
                         inner.reply_cache.update(call_id, Ok(msg)).unwrap();
                     }

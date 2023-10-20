@@ -1,4 +1,5 @@
 //! This engine can only be placed at the sender side for now.
+use std::collections::BTreeMap;
 use std::os::unix::ucred::UCred;
 use std::pin::Pin;
 use std::ptr::Unique;
@@ -10,6 +11,8 @@ use futures::SinkExt;
 use phoenix_api::rpc::{RpcId, StatusCode};
 use phoenix_api_policy_cache::control_plane;
 
+use super::DatapathError;
+use crate::config::CacheConfig;
 use phoenix_common::engine::datapath::message::{
     EngineRxMessage, EngineTxMessage, RpcMessageRx, RpcMessageTx,
 };
@@ -21,9 +24,6 @@ use phoenix_common::impl_vertex_for_engine;
 use phoenix_common::module::Version;
 use phoenix_common::storage::{ResourceCollection, SharedStorage};
 
-use super::DatapathError;
-use crate::config::CacheConfig;
-
 pub mod cache {
     // The string specified here must match the proto package name
     include!("cache.rs");
@@ -34,8 +34,10 @@ pub(crate) struct CacheEngine {
 
     pub(crate) indicator: Indicator,
 
-    pub(crate) meta_buf_pool: MetaBufferPool,
     pub(crate) config: CacheConfig,
+
+    pub(crate) meta_pool: MetaBufferPool,
+    pub(crate) buffer: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -94,9 +96,9 @@ impl Decompose for CacheEngine {
         let engine = *self;
 
         let mut collections = ResourceCollection::with_capacity(2);
-        collections.insert("meta_buf_pool".to_string(), Box::new(engine.meta_buf_pool));
 
         collections.insert("config".to_string(), Box::new(engine.config));
+        collections.insert("buffer".to_string(), Box::new(engine.buffer));
 
         (collections, engine.node)
     }
@@ -113,15 +115,22 @@ impl CacheEngine {
             .unwrap()
             .downcast::<CacheConfig>()
             .map_err(|x| anyhow!("fail to downcast, type_name={:?}", x.type_name()))?;
-        let meta_buf_pool = *local
-            .remove("meta_buf_pool")
+        let buffer = *local
+            .remove("buffer")
+            .unwrap()
+            .downcast::<BTreeMap<String, String>>()
+            .map_err(|x| anyhow!("fail to downcast, type_name={:?}", x.type_name()))?;
+        let meta_pool: MetaBufferPool = *local
+            .remove("meta_pool")
             .unwrap()
             .downcast::<MetaBufferPool>()
             .map_err(|x| anyhow!("fail to downcast, type_name={:?}", x.type_name()))?;
+
         let engine = CacheEngine {
             node,
             indicator: Default::default(),
-            meta_buf_pool,
+            meta_pool,
+            buffer,
             config,
         };
         Ok(engine)
@@ -151,19 +160,21 @@ impl CacheEngine {
 
 /// Copy the RPC request to a private heap and returns the request.
 #[inline]
-fn materialize_rx(msg: &RpcMessageRx) -> Box<cache::Key> {
+fn get_key(msg: &RpcMessageTx) -> String {
     let req_ptr = Unique::new(msg.addr_backend as *mut cache::Key).unwrap();
     let req = unsafe { req_ptr.as_ref() };
     // returns a private_req
-    Box::new(req.clone())
+    let key = String::from_utf8_lossy(&req.key);
+    key.to_string().clone()
 }
 
 #[inline]
-fn should_block(req: &cache::Key) -> bool {
-    let buf = &req.name as &[u8];
-    return buf == b"Apple";
-    //let name = String::from_utf8_lossy(buf);
-    //log::info!("raw: {:?}, req.name: {:?}", buf, name);
+fn get_value(msg: &RpcMessageRx) -> String {
+    let req_ptr = Unique::new(msg.addr_backend as *mut cache::Value).unwrap();
+    let req = unsafe { req_ptr.as_ref() };
+    // returns a private_req
+    let value = String::from_utf8_lossy(&req.value);
+    value.to_string().clone()
 }
 
 impl CacheEngine {
@@ -172,7 +183,27 @@ impl CacheEngine {
 
         match self.tx_inputs()[0].try_recv() {
             Ok(msg) => {
-                self.tx_outputs()[0].send(msg)?;
+                match msg {
+                    EngineTxMessage::RpcMessage(msg) => {
+                        let key = get_key(&msg);
+                        if let Some(value) = self.buffer.get(&key) {
+                            let ori_meta = msg.meta_buf_ptr.as_meta_ptr();
+                            let meta = unsafe { (*ori_meta).clone() };
+                            let resp = RpcMessageRx {
+                                meta: Unique::new(&meta).unwrap(),
+                                addr_app: msg.addr_backend,
+                                addr_backend: msg.addr_backend,
+                            };
+
+                            self.rx_outputs()[0].send(EngineRxMessage::RpcMessage(resp))?;
+                        } else {
+                            self.tx_outputs()[0].send(EngineTxMessage::RpcMessage(msg))?;
+                        }
+                    }
+                    EngineTxMessage::ReclaimRecvBuf(_handle, _call_ids) => {
+                        self.tx_outputs()[0].send(msg)?;
+                    }
+                }
                 return Ok(Progress(1));
             }
             Err(TryRecvError::Empty) => {}

@@ -455,13 +455,17 @@ impl RpcAdapterEngine {
         let ctx = self.rpc_ctx.insert(RpcId::new(cmid.as_handle(), call_id));
 
         // TODO(cjr): XXX, this credit implementation has big flaws
-        if msg_type == RpcMsgType::Request {
+        if msg_type == RpcMsgType::NetRequest {
             conn_ctx.credit.fetch_sub(1, Ordering::AcqRel);
             self.pending_recv += 1;
             conn_ctx
                 .outstanding_req
                 .lock()
                 .push_back(ReqContext { call_id, sg_len: 1 });
+        }
+
+        if msg_type == RpcMsgType::BackendResponse || msg_type == RpcMsgType::BackendRequest {
+            panic!("backend type should not go to adapter level!")
         }
 
         let off = meta_buf_ptr.0.as_ptr().expose_addr();
@@ -522,7 +526,7 @@ impl RpcAdapterEngine {
         let cmid = &conn_ctx.cmid;
 
         // TODO(cjr): XXX, this credit implementation has some issues
-        if meta_ref.msg_type == RpcMsgType::Request {
+        if meta_ref.msg_type == RpcMsgType::NetRequest {
             conn_ctx
                 .credit
                 .fetch_sub(sglist.0.len() + 1, Ordering::AcqRel);
@@ -531,6 +535,12 @@ impl RpcAdapterEngine {
                 call_id,
                 sg_len: sglist.0.len() + 1,
             });
+        }
+
+        if meta_ref.msg_type == RpcMsgType::BackendResponse
+            || meta_ref.msg_type == RpcMsgType::BackendRequest
+        {
+            panic!("backend type should not go to adapter level!")
         }
 
         // Sender posts send requests from the SgList
@@ -698,7 +708,7 @@ impl RpcAdapterEngine {
 
         // timer.tick();
         // replenish the credits
-        if meta.msg_type == RpcMsgType::Response {
+        if meta.msg_type == RpcMsgType::NetResponse {
             let call_id = meta.call_id;
             let mut outstanding_req = conn_ctx.outstanding_req.lock();
             let req_ctx = outstanding_req.pop_front().unwrap();
@@ -708,6 +718,10 @@ impl RpcAdapterEngine {
             drop(outstanding_req);
         }
         // timer.tick();
+
+        if meta.msg_type == RpcMsgType::BackendResponse || meta.msg_type == RpcMsgType::BackendRequest {
+            panic!("backend type should not go to adapter level!")
+        }
 
         let mut excavate_ctx = ExcavateContext {
             sgl: sgl.0[1..].iter(),
