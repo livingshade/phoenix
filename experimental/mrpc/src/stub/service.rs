@@ -41,7 +41,7 @@ pub fn service_post_handler<T: RpcData>(
 ) -> (WRefOpaque, MessageErased) {
     // construct meta
     let meta = MessageMeta {
-        msg_type: RpcMsgType::Response,
+        msg_type: RpcMsgType::NetResponse,
         ..req_opaque.meta
     };
 

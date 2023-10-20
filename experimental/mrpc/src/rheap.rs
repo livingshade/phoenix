@@ -9,7 +9,7 @@ use memfd::Memfd;
 use mmap::MmapFixed;
 
 use phoenix_api::{AsHandle, Handle};
-use phoenix_api_mrpc::cmd::ConnectResponse;
+use phoenix_api_mrpc::cmd::{ConnectResponse, ReadHeapRegion};
 
 use super::Error;
 
@@ -52,6 +52,25 @@ impl ReadHeap {
         }
     }
 
+    /// Creates a [`ReadHeap`] that is used for backend engines to create rx msg
+    pub fn new_backend(read_regions: &ReadHeapRegion, fd: RawFd) -> Self {
+        let memfd = Memfd::try_from_fd(fd)
+            .map_err(|_| io::Error::last_os_error())
+            .unwrap();
+        ReadHeap {
+            rref_cnt: AtomicUsize::new(0),
+            rbufs: vec![ReadRegion::new(
+                read_regions.handle,
+                read_regions.addr,
+                read_regions.len,
+                read_regions.file_off,
+                memfd,
+            )
+            .unwrap()],
+        }
+    }
+
+    /// Returns a dummy
     pub fn default() -> Self {
         ReadHeap {
             rref_cnt: AtomicUsize::new(0),

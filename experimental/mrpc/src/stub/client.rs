@@ -89,6 +89,7 @@ impl !Sync for ClientStub {}
 #[derive(Debug)]
 pub struct ClientStub {
     vconn: Connection,
+    backend_heap: Arc<ReadHeap>,
     // A connection could go into error state, in that case, all subsequent operations over this
     // connection would return an error.
     conns: HashMap<Handle, Connection>,
@@ -328,15 +329,23 @@ impl ClientStub {
 
                 let mut conns = HashMap::new();
                 conns.insert(conn.handle().clone(), conn);
-                Ok(Self {
-                    vconn: Connection::vconn(conn_handle),
-                    conns: conns,
-                    // inner: RefCell::new(Inner {
-                    inner: spin::Mutex::new(Inner {
-                        receiver,
-                        reply_cache: ReplyCache::new(),
-                    }),
-                })
+
+                match ctx.service.recv_comp()?.0 {
+                    Ok(CompletionKind::SetBackendHeap(read_region, fd)) => {
+                        let backend_heap = ReadHeap::new_backend(&read_region, fd);
+                        Ok(Self {
+                            vconn: Connection::vconn(conn_handle),
+                            conns: conns,
+                            backend_heap: Arc::new(backend_heap),
+                            // inner: RefCell::new(Inner {
+                            inner: spin::Mutex::new(Inner {
+                                receiver,
+                                reply_cache: ReplyCache::new(),
+                            }),
+                        })
+                    }
+                    _ => panic!("unmatched branch"),
+                }
             })
         })
     }
@@ -418,6 +427,7 @@ impl ClientStub {
         Ok(Self {
             vconn: vconn.unwrap(),
             conns: conn_map,
+            backend_heap: Arc::new(ReadHeap::default()),
             inner: spin::Mutex::new(Inner {
                 receiver,
                 reply_cache: ReplyCache::new(),

@@ -31,6 +31,12 @@ pub trait Engine: Decompose + Send + Vertex + Unpin + 'static {
     /// Returns the progress tracker, which implies the future work.
     fn tracker(self: Pin<&mut Self>) -> &mut Indicator;
 
+    /// Alloc memmory for RX message, used when mocking message from network.
+    fn allocRX(self: Pin<&mut Self>, _size: usize) -> PhoenixResult<()> {
+        // empty default impl
+        Ok(())
+    }
+
     /// Asks the engine to updates its local storage pointer.
     ///
     /// # Warning

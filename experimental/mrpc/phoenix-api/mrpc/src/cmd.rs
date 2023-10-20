@@ -39,6 +39,7 @@ pub struct ConnectResponse {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum CompletionKind {
     SetTransport,
+    SetBackendHeap(ReadHeapRegion, RawFd),
     // connection handle, receive mrs
     ConnectInternal(ConnectResponse, Vec<RawFd>),
     Connect(ConnectResponse),
