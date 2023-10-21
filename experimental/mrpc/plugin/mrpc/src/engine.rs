@@ -3,6 +3,7 @@ use std::os::fd::{AsRawFd, RawFd};
 use std::path::PathBuf;
 use std::pin::Pin;
 
+use crate::pool::BufferSlab;
 use anyhow::{anyhow, Result};
 use futures::future::BoxFuture;
 use phoenix_api::engine::SchedulingMode;
@@ -25,8 +26,6 @@ use phoenix_salloc::state::{Shared as SallocShared, State as SallocState};
 use phoenix_salloc::ControlPathError;
 use slab::Slab;
 use std::num::NonZeroU32;
-
-use crate::pool::BufferSlab;
 
 use super::builder::build_serializer_lib;
 use super::module::CustomerType;
@@ -620,7 +619,7 @@ impl MrpcEngine {
 
     fn prepare_rx_buffers(&mut self) -> Result<(ReadHeapRegion, RawFd), ControlPathError> {
         let slab = BufferSlab::new(
-            128,
+            1,
             8 * 1024 * 1024,
             8 * 1024 * 1024,
             &self.salloc.addr_mediator,
@@ -635,7 +634,7 @@ impl MrpcEngine {
             file_off: 0,
         };
         let fd = region.memfd().as_raw_fd();
-
+        log::info!("raw fd in prepare: {}", fd);
         // don't forget this
         self.state.resource().recv_buffer_pool.replenish(slab);
         Ok((read_region, fd))

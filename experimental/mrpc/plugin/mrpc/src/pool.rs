@@ -9,6 +9,7 @@ use phoenix_api::{AsHandle, Handle};
 
 use phoenix_salloc::region::{AddressMediator, SharedRegion};
 
+use phoenix_common::log;
 use phoenix_common::resource::Error as ResourceError;
 
 use super::ControlPathError;
@@ -81,8 +82,9 @@ impl BufferSlab {
 
         // allocate a SharedRegion
         let layout = Layout::from_size_align(total_size, buffer_align).unwrap();
+        log::debug!("BufferSlab::new: layout: {:?}", layout);
         let region = Arc::new(SharedRegion::new(layout, addr_mediator).unwrap());
-
+        log::info!("BufferSlab::new: region: {:?}", region);
         Ok(Self {
             num_buffers,
             buffer_size,

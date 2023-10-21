@@ -334,6 +334,7 @@ impl ClientStub {
                 ctx.service.send_cmd(req)?;
                 match ctx.service.recv_comp()?.0 {
                     Ok(CompletionKind::SetBackendHeap(read_region, fd)) => {
+                        println!("new backend heap! with fd: {:?}", fd);
                         let backend_heap = ReadHeap::new_backend(&read_region, fd);
                         println!("backend heap finish!");
 

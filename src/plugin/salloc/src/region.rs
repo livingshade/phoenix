@@ -7,9 +7,9 @@ use std::os::unix::prelude::AsRawFd;
 
 use memfd::{Memfd, MemfdOptions};
 use mmap::MmapFixed;
-use thiserror::Error;
-
 use phoenix_api::{AsHandle, Handle};
+use phoenix_common::log;
+use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -59,10 +59,12 @@ impl SharedRegion {
 
         let name = format!("shared-mr-{}", nbytes);
         let memfd = opts.create(name)?;
+        log::info!("memfd created in shared region: {:?}", memfd);
         memfd.as_file().set_len(nbytes as u64)?;
 
         let target_addr = addr_mediator.allocate(layout);
         let mmap = MmapFixed::new(target_addr, nbytes, 0, memfd.as_file())?;
+        log::info!("mmap created in shared region: {:?}", mmap);
         Ok(Self { mmap, memfd, align })
     }
 
