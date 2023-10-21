@@ -7,6 +7,5 @@ edition = "2021"
 
 [dependencies]
 phoenix-api = { workspace = true, features = ["mrpc"] }
-
 serde.workspace = true
 static_assertions.workspace = true

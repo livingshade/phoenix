@@ -1,4 +1,6 @@
 #![feature(ptr_internals)]
+#![feature(strict_provenance)]
+#![feature(local_key_cell_methods)]
 #![feature(peer_credentials_unix_socket)]
 
 use thiserror::Error;
@@ -12,9 +14,9 @@ pub(crate) mod engine;
 // pub mod message;
 // pub mod meta_pool;
 pub mod module;
+pub mod pool;
 pub mod state;
 pub mod unpack;
-
 #[derive(Debug, Error)]
 pub(crate) enum Error {
     // Below are errors that return to the user.
@@ -75,4 +77,11 @@ pub fn init_module(config_string: Option<&str>) -> InitFnResult<Box<dyn PhoenixM
     let config = MrpcConfig::new(config_string)?;
     let module = MrpcModule::new(config);
     Ok(Box::new(module))
+}
+
+#[derive(Error, Debug)]
+#[error("mRPC control path error")]
+pub(crate) enum ControlPathError {
+    #[error("Resource error: {0}")]
+    Resource(#[from] ResourceError),
 }

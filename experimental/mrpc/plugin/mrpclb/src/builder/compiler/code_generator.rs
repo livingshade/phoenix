@@ -77,18 +77,21 @@ pub fn generate(
             addr_backend: usize,
         ) -> Result<SgList, MarshalError> {
             match meta.msg_type {
-                RpcMsgType::Request => {
+                RpcMsgType::NetRequest => {
                     match meta.func_id {
                         #(#requests_marshal)*
                         _ => panic!("unknown func_id: {}, meta: {:?}", meta.func_id, meta),
                     }
                 },
-                RpcMsgType::Response => {
+                RpcMsgType::NetResponse => {
                     match meta.func_id {
                         #(#responses_marshal)*
                         _ => panic!("unknown func_id: {}, meta: {:?}", meta.func_id, meta),
                     }
-                }
+                },
+                _ => {
+                    panic!("marshal should not be called for backend message")
+                },
             }
         }
 
@@ -98,18 +101,21 @@ pub fn generate(
             ctx: &mut ExcavateContext<AddressMap>,
         ) -> Result<(usize, usize), UnmarshalError> {
             let addr_shm = match meta.msg_type {
-                RpcMsgType::Request => {
+                RpcMsgType::NetRequest => {
                     match meta.func_id {
                         #(#requests_unmarshal)*
                         _ => panic!("unknown func_id: {}, meta: {:?}", meta.func_id, meta),
                     }
                 },
-                RpcMsgType::Response => {
+                RpcMsgType::NetResponse => {
                     match meta.func_id {
                         #(#response_unmarshal)*
                         _ => panic!("unknown func_id: {}, meta: {:?}", meta.func_id, meta),
                     }
-                }
+                },
+                _ => {
+                    panic!("marshal should not be called for backend message")
+                },
             };
 
             Ok(addr_shm)

@@ -2,15 +2,15 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use uuid::Uuid;
 
+use crate::state::{Shared, State};
 use ipc::customer::ShmCustomer;
 use phoenix_api::engine::SchedulingMode;
 use phoenix_api_mrpc::control_plane::Setting;
 use phoenix_api_mrpc::control_plane::TransportType;
 use phoenix_api_mrpc::{cmd, dp};
-
 use phoenix_common::engine::datapath::meta_pool::MetaBufferPool;
 use phoenix_common::engine::datapath::node::{ChannelDescriptor, DataPathNode};
 use phoenix_common::engine::{Engine, EnginePair, EngineType};
@@ -22,11 +22,13 @@ use phoenix_common::module::{
 use phoenix_common::state_mgr::{Pid, SharedStateManager};
 use phoenix_common::storage::{get_default_prefix, ResourceCollection, SharedStorage};
 use phoenix_common::PhoenixResult;
+use phoenix_salloc::module::SallocModule;
+use phoenix_salloc::region::AddressMediator;
+use phoenix_salloc::state::{Shared as SallocShared, State as SallocState};
 
 use crate::config::MrpcConfig;
 
 use super::engine::MrpcEngine;
-use super::state::{Shared, State};
 
 pub type CustomerType =
     ShmCustomer<cmd::Command, cmd::Completion, dp::WorkRequestSlot, dp::CompletionSlot>;
@@ -40,6 +42,8 @@ pub(crate) struct MrpcEngineBuilder {
     node: DataPathNode,
     serializer_build_cache: PathBuf,
     shared: Arc<Shared>,
+    salloc_shared: Arc<SallocShared>,
+    addr_mediator: Arc<AddressMediator>,
 }
 
 impl MrpcEngineBuilder {
@@ -53,6 +57,8 @@ impl MrpcEngineBuilder {
         node: DataPathNode,
         serializer_build_cache: PathBuf,
         shared: Arc<Shared>,
+        salloc_shared: Arc<SallocShared>,
+        addr_mediator: Arc<AddressMediator>,
     ) -> Self {
         MrpcEngineBuilder {
             customer,
@@ -63,6 +69,8 @@ impl MrpcEngineBuilder {
             mode,
             serializer_build_cache,
             shared,
+            salloc_shared,
+            addr_mediator,
         }
     }
 
@@ -71,9 +79,10 @@ impl MrpcEngineBuilder {
         const BUF_LEN: usize = 32;
 
         let state = State::new(self.shared);
-
+        let salloc_state = SallocState::new(self.salloc_shared, self.addr_mediator);
         Ok(MrpcEngine {
-            _state: state,
+            state: state,
+            salloc: salloc_state,
             customer: self.customer,
             cmd_tx: self.cmd_tx,
             cmd_rx: self.cmd_rx,
@@ -210,9 +219,15 @@ impl PhoenixModule for MrpcModule {
         shared: &mut SharedStorage,
         global: &mut ResourceCollection,
         node: DataPathNode,
-        _plugged: &ModuleCollection,
+        plugged: &ModuleCollection,
     ) -> PhoenixResult<Option<Box<dyn Engine>>> {
         log::info!("create_engine mrpc module!");
+        let mut salloc_module = plugged
+            .get_mut("Salloc")
+            .ok_or_else(|| anyhow!("fail to get Salloc module"))?;
+        let salloc: &mut SallocModule = salloc_module
+            .downcast_mut()
+            .ok_or_else(|| anyhow!("fail to downcast Salloc module"))?;
         if ty != MrpcModule::MRPC_ENGINE {
             bail!("invalid engine type {:?}", ty)
         }
@@ -240,7 +255,7 @@ impl PhoenixModule for MrpcModule {
             let customer = ShmCustomer::accept(sock, client_path, mode, engine_path)?;
 
             let client_pid = Pid::from_raw(cred.pid.unwrap());
-            let shared_state = self.state_mgr.get_or_create(client_pid)?;
+            //let shared_state = self.state_mgr.get_or_create(client_pid)?;
 
             let setting = if let Some(config_string) = config_string {
                 serde_json::from_str(&config_string)?
@@ -266,6 +281,13 @@ impl PhoenixModule for MrpcModule {
             let cmd_tx = shared.command_path.get_sender(&engine_type)?;
             let cmd_rx = shared.command_path.get_receiver(&engine_type)?;
 
+            let addr_mediator = salloc.get_addr_mediator();
+            let addr_mediator_clone = Arc::clone(&addr_mediator);
+            let shared = self.state_mgr.get_or_create_with(client_pid, move || {
+                Shared::new_from_addr_mediator(client_pid, addr_mediator_clone).unwrap()
+            })?;
+            let salloc_shared = salloc.state_mgr.get_or_create(client_pid)?;
+
             let builder = MrpcEngineBuilder::new(
                 customer,
                 client_pid,
@@ -274,7 +296,9 @@ impl PhoenixModule for MrpcModule {
                 cmd_rx,
                 node,
                 build_cache,
-                shared_state,
+                shared,
+                salloc_shared,
+                addr_mediator,
                 // TODO(cjr): store the setting, not necessary now.
             );
             let engine = builder.build()?;

@@ -803,6 +803,9 @@ impl TcpRpcAdapterEngine {
     ) -> Result<phoenix_api_mrpc::cmd::CompletionKind, ControlPathError> {
         use phoenix_api_mrpc::cmd::{Command, CompletionKind};
         match req {
+            Command::SetBackendHeap => {
+                unreachable!();
+            }
             Command::SetTransport(_) => {
                 unreachable!();
             }

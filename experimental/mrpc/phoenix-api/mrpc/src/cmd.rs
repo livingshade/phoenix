@@ -10,6 +10,7 @@ type IResult<T> = Result<T, phoenix_api::Error>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Command {
+    SetBackendHeap,
     SetTransport(TransportType),
     Connect(SocketAddr),
     // MultiConnect tells lb to map a vector of connections to a virtual connection

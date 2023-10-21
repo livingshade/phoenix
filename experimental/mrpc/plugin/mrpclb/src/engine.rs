@@ -308,6 +308,9 @@ impl MrpcLBEngine {
     ) -> Result<Option<cmd::CompletionKind>, Error> {
         use phoenix_api_mrpc::cmd::{Command, CompletionKind};
         match req {
+            Command::SetBackendHeap => {
+                panic!("SetBackendHeap is only used in backend")
+            }
             Command::SetTransport(transport_type) => {
                 if self.transport_type.is_some() {
                     Err(Error::TransportType)

@@ -719,7 +719,9 @@ impl RpcAdapterEngine {
         }
         // timer.tick();
 
-        if meta.msg_type == RpcMsgType::BackendResponse || meta.msg_type == RpcMsgType::BackendRequest {
+        if meta.msg_type == RpcMsgType::BackendResponse
+            || meta.msg_type == RpcMsgType::BackendRequest
+        {
             panic!("backend type should not go to adapter level!")
         }
 
@@ -1015,6 +1017,9 @@ impl RpcAdapterEngine {
         req: &cmd::Command,
     ) -> Result<cmd::CompletionKind, ControlPathError> {
         match req {
+            cmd::Command::SetBackendHeap => {
+                unreachable!();
+            }
             cmd::Command::SetTransport(_) => {
                 unreachable!();
             }

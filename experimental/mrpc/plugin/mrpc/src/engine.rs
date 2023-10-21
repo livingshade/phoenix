@@ -1,15 +1,15 @@
 use std::mem;
+use std::os::fd::{AsRawFd, RawFd};
 use std::path::PathBuf;
 use std::pin::Pin;
 
 use anyhow::{anyhow, Result};
 use futures::future::BoxFuture;
-use std::num::NonZeroU32;
-
 use phoenix_api::engine::SchedulingMode;
 use phoenix_api::rpc::{MessageErased, RpcId, StatusCode};
+use phoenix_api::AsHandle;
+use phoenix_api_mrpc::cmd::ReadHeapRegion;
 use phoenix_api_mrpc::{cmd, control_plane, dp};
-
 use phoenix_common::engine::datapath::message::{EngineRxMessage, EngineTxMessage, RpcMessageTx};
 use phoenix_common::engine::datapath::meta_pool::MetaBufferPool;
 use phoenix_common::engine::datapath::DataPathNode;
@@ -21,6 +21,12 @@ use phoenix_common::impl_vertex_for_engine;
 use phoenix_common::module::{ModuleCollection, Version};
 use phoenix_common::storage::{ResourceCollection, SharedStorage};
 use phoenix_common::{log, tracing};
+use phoenix_salloc::state::{Shared as SallocShared, State as SallocState};
+use phoenix_salloc::ControlPathError;
+use slab::Slab;
+use std::num::NonZeroU32;
+
+use crate::pool::BufferSlab;
 
 use super::builder::build_serializer_lib;
 use super::module::CustomerType;
@@ -28,8 +34,8 @@ use super::state::State;
 use super::{DatapathError, Error};
 
 pub struct MrpcEngine {
-    pub(crate) _state: State,
-
+    pub(crate) state: State,
+    pub(crate) salloc: SallocState,
     pub(crate) customer: CustomerType,
     pub(crate) cmd_tx: tokio::sync::mpsc::UnboundedSender<cmd::Command>,
     pub(crate) cmd_rx: tokio::sync::mpsc::UnboundedReceiver<cmd::Completion>,
@@ -82,7 +88,7 @@ impl Decompose for MrpcEngine {
         log::debug!("dumping MrpcEngine states...");
         collections.insert("customer".to_string(), Box::new(engine.customer));
         collections.insert("mode".to_string(), Box::new(engine._mode));
-        collections.insert("state".to_string(), Box::new(engine._state));
+        collections.insert("state".to_string(), Box::new(engine.state));
         collections.insert("cmd_tx".to_string(), Box::new(engine.cmd_tx));
         collections.insert("cmd_rx".to_string(), Box::new(engine.cmd_rx));
         collections.insert("meta_buf_pool".to_string(), Box::new(engine.meta_buf_pool));
@@ -128,6 +134,11 @@ impl MrpcEngine {
             .unwrap()
             .downcast::<State>()
             .map_err(|x| anyhow!("fail to downcast, type_name={:?}", x.type_name()))?;
+        let salloc = *local
+            .remove("salloc")
+            .unwrap()
+            .downcast::<SallocState>()
+            .map_err(|x| anyhow!("fail to downcast, type_name={:?}", x.type_name()))?;
         let cmd_tx = *local
             .remove("cmd_tx")
             .unwrap()
@@ -160,7 +171,8 @@ impl MrpcEngine {
             .map_err(|x| anyhow!("fail to downcast, type_name={:?}", x.type_name()))?;
 
         let engine = MrpcEngine {
-            _state: state,
+            state,
+            salloc,
             customer,
             cmd_tx,
             cmd_rx,
@@ -307,6 +319,10 @@ impl MrpcEngine {
     ) -> Result<Option<cmd::CompletionKind>, Error> {
         use phoenix_api_mrpc::cmd::{Command, CompletionKind};
         match req {
+            Command::SetBackendHeap => {
+                let (read_region, fd) = self.prepare_rx_buffers().unwrap();
+                Ok(Some(CompletionKind::SetBackendHeap(read_region, fd)))
+            }
             Command::SetTransport(transport_type) => {
                 if self.transport_type.is_some() {
                     Err(Error::TransportType)
@@ -600,5 +616,28 @@ impl MrpcEngine {
             Err(TryRecvError::Empty) => Ok(Progress(0)),
             Err(TryRecvError::Disconnected) => Ok(Status::Disconnected),
         }
+    }
+
+    fn prepare_rx_buffers(&mut self) -> Result<(ReadHeapRegion, RawFd), ControlPathError> {
+        let slab = BufferSlab::new(
+            128,
+            8 * 1024 * 1024,
+            8 * 1024 * 1024,
+            &self.salloc.addr_mediator,
+        )
+        .unwrap();
+
+        let region = slab.storage();
+        let read_region = ReadHeapRegion {
+            handle: region.as_handle(),
+            addr: region.as_ptr().addr(),
+            len: region.len(),
+            file_off: 0,
+        };
+        let fd = region.memfd().as_raw_fd();
+
+        // don't forget this
+        self.state.resource().recv_buffer_pool.replenish(slab);
+        Ok((read_region, fd))
     }
 }

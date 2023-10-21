@@ -329,10 +329,14 @@ impl ClientStub {
 
                 let mut conns = HashMap::new();
                 conns.insert(conn.handle().clone(), conn);
-
+                println!("backend heap!");
+                let req = Command::SetBackendHeap;
+                ctx.service.send_cmd(req)?;
                 match ctx.service.recv_comp()?.0 {
                     Ok(CompletionKind::SetBackendHeap(read_region, fd)) => {
                         let backend_heap = ReadHeap::new_backend(&read_region, fd);
+                        println!("backend heap finish!");
+
                         Ok(Self {
                             vconn: Connection::vconn(conn_handle),
                             conns: conns,

@@ -6,7 +6,6 @@ use std::ptr::Unique;
 
 use anyhow::{anyhow, Result};
 use futures::future::BoxFuture;
-use futures::SinkExt;
 
 use phoenix_api::rpc::{RpcId, StatusCode};
 use phoenix_api_policy_cache::control_plane;
@@ -185,20 +184,21 @@ impl CacheEngine {
             Ok(msg) => {
                 match msg {
                     EngineTxMessage::RpcMessage(msg) => {
-                        let key = get_key(&msg);
-                        if let Some(value) = self.buffer.get(&key) {
-                            let ori_meta = msg.meta_buf_ptr.as_meta_ptr();
-                            let meta = unsafe { (*ori_meta).clone() };
-                            let resp = RpcMessageRx {
-                                meta: Unique::new(&meta).unwrap(),
-                                addr_app: msg.addr_backend,
-                                addr_backend: msg.addr_backend,
-                            };
+                        todo!()
+                        // let key = get_key(&msg);
+                        // if let Some(value) = self.buffer.get(&key) {
+                        //     let ori_meta = msg.meta_buf_ptr.as_meta_ptr();
+                        //     let meta = unsafe { (*ori_meta).clone() };
+                        //     // let resp = RpcMessageRx {
+                        //     //     meta: Unique::new(&meta).unwrap(),
+                        //     //     addr_app: msg.addr_backend,
+                        //     //     addr_backend: msg.addr_backend,
+                        //     // };
 
-                            self.rx_outputs()[0].send(EngineRxMessage::RpcMessage(resp))?;
-                        } else {
-                            self.tx_outputs()[0].send(EngineTxMessage::RpcMessage(msg))?;
-                        }
+                        //     self.rx_outputs()[0].send(EngineRxMessage::RpcMessage(resp))?;
+                        // } else {
+                        //     self.tx_outputs()[0].send(EngineTxMessage::RpcMessage(msg))?;
+                        // }
                     }
                     EngineTxMessage::ReclaimRecvBuf(_handle, _call_ids) => {
                         self.tx_outputs()[0].send(msg)?;

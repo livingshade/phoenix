@@ -63,7 +63,7 @@ impl RpcAdapterEngineBuilder {
     }
 
     fn build(self) -> Result<TcpRpcAdapterEngine> {
-        let state = State::new(self.shared);
+        let state: State = State::new(self.shared);
         let salloc_state = SallocState::new(self.salloc_shared, self.addr_mediator);
 
         Ok(TcpRpcAdapterEngine {
