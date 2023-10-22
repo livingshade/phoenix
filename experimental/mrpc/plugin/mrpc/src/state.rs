@@ -14,12 +14,8 @@ use phoenix_common::state_mgr::ProcessShared;
 use super::pool::{BufferPool, RecvBuffer};
 
 pub(crate) struct State {
-    // per engine state
-    pub(crate) _rpc_adapter_id: usize,
     // shared among all engines of a user process
     pub(crate) shared: Arc<Shared>,
-    pub(crate) conn_table: RefCell<HashMap<Handle, ConnectionContext>>,
-    pub(crate) recv_buffer_table: RefCell<HashMap<Handle, RecvBuffer>>,
 }
 // SAFETY: State in tcp will not be shared by multiple threads
 // It is owned and used by a single thread/runtime
@@ -27,24 +23,14 @@ unsafe impl Sync for State {}
 
 impl State {
     pub fn new(shared: Arc<Shared>) -> Self {
-        let rpc_adapter_id = Arc::strong_count(&shared) - 1;
-        State {
-            _rpc_adapter_id: rpc_adapter_id,
-            shared,
-            conn_table: RefCell::new(HashMap::default()),
-            recv_buffer_table: RefCell::new(HashMap::default()),
-        }
+        State { shared }
     }
 }
 
 impl Clone for State {
     fn clone(&self) -> Self {
-        let _rpc_adapter_id = self.shared.alive_engines.fetch_add(1, Ordering::AcqRel);
         State {
-            _rpc_adapter_id,
             shared: Arc::clone(&self.shared),
-            conn_table: RefCell::new(HashMap::default()),
-            recv_buffer_table: RefCell::new(HashMap::default()),
         }
     }
 }
@@ -96,29 +82,6 @@ impl Shared {
             resource: Resource::new(addr_mediator),
         };
         Ok(shared)
-    }
-}
-
-#[derive(Debug, Default)]
-pub(crate) struct RecvContext {
-    // buffer for recevied sges
-    pub(crate) sg_list: SgList,
-    // recv mrs that received sges are on
-    pub(crate) recv_mrs: Vec<Handle>,
-}
-
-#[derive(Debug)]
-pub(crate) struct ConnectionContext {
-    pub(crate) sock_handle: Handle,
-    pub(crate) receiving_ctx: RecvContext,
-}
-
-impl ConnectionContext {
-    pub(crate) fn new(sock_handle: Handle) -> Self {
-        Self {
-            sock_handle,
-            receiving_ctx: RecvContext::default(),
-        }
     }
 }
 

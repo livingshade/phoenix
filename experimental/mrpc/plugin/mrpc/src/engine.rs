@@ -320,7 +320,9 @@ impl MrpcEngine {
         match req {
             Command::SetBackendHeap => {
                 let (read_region, fd) = self.prepare_rx_buffers().unwrap();
-                Ok(Some(CompletionKind::SetBackendHeap(read_region, fd)))
+                let fds = [fd];
+                self.customer.send_fd(&fds).unwrap();
+                Ok(Some(CompletionKind::SetBackendHeap(read_region)))
             }
             Command::SetTransport(transport_type) => {
                 if self.transport_type.is_some() {
@@ -634,7 +636,6 @@ impl MrpcEngine {
             file_off: 0,
         };
         let fd = region.memfd().as_raw_fd();
-        log::info!("raw fd in prepare: {}", fd);
         // don't forget this
         self.state.resource().recv_buffer_pool.replenish(slab);
         Ok((read_region, fd))
