@@ -1,6 +1,7 @@
 use std::collections::{HashMap, VecDeque};
 use std::os::unix::net::UCred;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
 use anyhow::{bail, Result};
 use nix::unistd::Pid;
@@ -121,7 +122,7 @@ impl PhoenixModule for TcpTransportModule {
         &mut self,
         ty: EngineType,
         request: NewEngineRequest,
-        _shared: &mut SharedStorage,
+        _shared: Arc<Mutex<SharedStorage>>,
         global: &mut ResourceCollection,
         node: DataPathNode,
         _plugged: &ModuleCollection,

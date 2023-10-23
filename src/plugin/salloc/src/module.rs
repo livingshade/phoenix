@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use anyhow::{bail, Result};
 use nix::unistd::Pid;
@@ -145,7 +145,7 @@ impl PhoenixModule for SallocModule {
         &mut self,
         ty: EngineType,
         request: NewEngineRequest,
-        _shared: &mut SharedStorage,
+        _shared: Arc<Mutex<SharedStorage>>,
         global: &mut ResourceCollection,
         node: DataPathNode,
         _plugged: &ModuleCollection,

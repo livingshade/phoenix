@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use anyhow::{anyhow, bail, Result};
 use uuid::Uuid;
@@ -216,7 +216,7 @@ impl PhoenixModule for MrpcModule {
         &mut self,
         ty: EngineType,
         request: NewEngineRequest,
-        shared: &mut SharedStorage,
+        shared: Arc<Mutex<SharedStorage>>,
         global: &mut ResourceCollection,
         node: DataPathNode,
         plugged: &ModuleCollection,
@@ -278,8 +278,9 @@ impl PhoenixModule for MrpcModule {
             // the sender/receiver ends are already created,
             // as the RpcAdapterEngine is built first
             // according to the topological order
-            let cmd_tx = shared.command_path.get_sender(&engine_type)?;
-            let cmd_rx = shared.command_path.get_receiver(&engine_type)?;
+            let mut inner = shared.lock().unwrap();
+            let cmd_tx = inner.command_path.get_sender(&engine_type)?;
+            let cmd_rx = inner.command_path.get_receiver(&engine_type)?;
 
             let addr_mediator = salloc.get_addr_mediator();
             let addr_mediator_clone = Arc::clone(&addr_mediator);

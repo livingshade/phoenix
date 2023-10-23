@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use std::{os::unix::ucred::UCred, path::Path};
 
 use dashmap::DashMap;
@@ -117,7 +118,7 @@ pub trait PhoenixModule: TypeTagged + Send + Sync + 'static {
         &mut self,
         ty: EngineType,
         request: NewEngineRequest,
-        shared: &mut SharedStorage,
+        shared: Arc<Mutex<SharedStorage>>,
         global: &mut ResourceCollection,
         node: DataPathNode,
         plugged: &ModuleCollection,

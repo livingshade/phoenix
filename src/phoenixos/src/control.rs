@@ -6,7 +6,7 @@ use std::io;
 use std::os::unix::net::{SocketAddr, UCred};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use anyhow::{anyhow, bail};
@@ -39,6 +39,7 @@ pub struct Control {
     upgrader: EngineUpgrader,
     scheduling_override: HashMap<String, SchedulingMode>,
     config: Config,
+    shared_storage_map: HashMap<Pid, Arc<Mutex<SharedStorage>>>,
 }
 
 impl Control {
@@ -113,7 +114,8 @@ impl Control {
             graph,
         };
 
-        let mut shared = SharedStorage::new();
+        let shared = Arc::new(Mutex::new(SharedStorage::new()));
+        self.shared_storage_map.insert(pid, shared.clone());
         let mut global = self
             .runtime_manager
             .global_resource_mgr
@@ -159,7 +161,7 @@ impl Control {
             let engine = module.create_engine(
                 *aux_engine_type,
                 request,
-                &mut shared,
+                shared.clone(),
                 global.value_mut(),
                 node,
                 &self.plugins.modules,
@@ -212,7 +214,7 @@ impl Control {
         let engine = match module.create_engine(
             *service_engine_type,
             request,
-            &mut shared,
+            shared.clone(),
             global.value_mut(),
             node,
             &self.plugins.modules,
@@ -333,6 +335,7 @@ impl Control {
             plugins,
             upgrader,
             scheduling_override,
+            shared_storage_map: HashMap::new(),
             config: config_clone,
         }
     }

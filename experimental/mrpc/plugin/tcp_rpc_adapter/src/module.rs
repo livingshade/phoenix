@@ -1,6 +1,6 @@
 use anyhow::{anyhow, bail, Result};
 use std::collections::{HashMap, VecDeque};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use nix::unistd::Pid;
 
@@ -142,7 +142,7 @@ impl PhoenixModule for TcpRpcAdapterModule {
         &mut self,
         ty: EngineType,
         request: NewEngineRequest,
-        shared: &mut SharedStorage,
+        shared: Arc<Mutex<SharedStorage>>,
         _global: &mut ResourceCollection,
         node: DataPathNode,
         plugged: &ModuleCollection,
@@ -168,15 +168,16 @@ impl PhoenixModule for TcpRpcAdapterModule {
                     config_string: _,
                 } = request
                 {
+                    let mut inner = shared.lock().unwrap();
                     let (cmd_sender, cmd_receiver) = tokio::sync::mpsc::unbounded_channel();
 
-                    shared
+                    inner
                         .command_path
                         .put_sender(Self::TCP_RPC_ADAPTER_ENGINE, cmd_sender)?;
 
                     let (comp_sender, comp_receiver) = tokio::sync::mpsc::unbounded_channel();
 
-                    shared
+                    inner
                         .command_path
                         .put_receiver(Self::TCP_RPC_ADAPTER_ENGINE, comp_receiver)?;
 
