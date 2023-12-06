@@ -193,6 +193,7 @@ impl RateLimitDropEngine {
                         let call_id = unsafe { &*req.meta_buf_ptr.as_meta_ptr() }.call_id;
                         let rpc_id = RpcId::new(conn_id, call_id);
                         if self.num_tokens > 1.0 {
+                            self.num_tokens = self.num_tokens - 1.0;
                             let raw_ptr: *const hello::HelloRequest = rpc_message;
                             let new_msg = RpcMessageTx {
                                 meta_buf_ptr: req.meta_buf_ptr.clone(),
@@ -200,7 +201,6 @@ impl RateLimitDropEngine {
                             };
                             self.tx_outputs()[0].send(EngineTxMessage::RpcMessage(new_msg))?;
                         } else {
-                            self.num_tokens = self.num_tokens - 1.0;
                             let error = EngineRxMessage::Ack(
                                 rpc_id,
                                 TransportStatus::Error(unsafe { NonZeroU32::new_unchecked(403) }),
