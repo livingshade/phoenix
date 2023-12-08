@@ -116,6 +116,8 @@ members = [
     "phoenix-api/policy/metrics-server",
     "phoenix-api/policy/mutation-server",
     "phoenix-api/policy/ratelimit-drop-server",
+    "phoenix-api/policy/encrypt-client",
+    "phoenix-api/policy/decrypt-server",
     "plugin/mrpc",
     "plugin/mrpclb",
     "plugin/rpc_adapter",
@@ -142,6 +144,8 @@ members = [
     "plugin/policy/metrics-server",
     "plugin/policy/mutation-server",
     "plugin/policy/ratelimit-drop-server",
+    "plugin/policy/encrypt-client",
+    "plugin/policy/decrypt-server",
     "examples/rpc_echo",
     "examples/rpc_bench",
     "examples/rpc_bench_plus",
@@ -283,6 +287,12 @@ path = "phoenix-api/policy/mutation-server"
 
 [workspace.dependencies.phoenix-api-policy-ratelimit-drop-server]
 path = "phoenix-api/policy/ratelimit-drop-server"
+
+[workspace.dependencies.phoenix-api-policy-encrypt-client]
+path = "phoenix-api/policy/encrypt-client"
+
+[workspace.dependencies.phoenix-api-policy-decrypt-server]
+path = "phoenix-api/policy/decrypt-server"
 
 [workspace.dependencies.mrpc-build]
 path = "mrpc-build"
