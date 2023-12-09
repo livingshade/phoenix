@@ -8,17 +8,11 @@ use minstant::Instant;
 use rand::Rng;
 use std::collections::HashMap;
 
-use crate::engine::{
-    meta_id_readonly_rx, meta_id_readonly_tx, meta_status_readonly_rx, meta_status_readonly_tx,
-    Gen_current_timestamp, Gen_decrypt, Gen_encrypt, Gen_min_f64, Gen_min_u64, Gen_random_f32,
-    Gen_time_difference, Gen_update_window,
-};
-
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct GenencryptclientConfig {}
+pub struct EncryptClientConfig {}
 
-impl GenencryptclientConfig {
+impl EncryptClientConfig {
     /// Get config from toml file
     pub fn new(config: Option<&str>) -> anyhow::Result<Self> {
         let config = toml::from_str(config.unwrap_or(""))?;

@@ -23,7 +23,7 @@ use phoenix_common::log;
 use phoenix_common::module::Version;
 
 use super::DatapathError;
-use crate::config::{create_log_file, GenencryptclientConfig};
+use crate::config::{create_log_file, EncryptClientConfig};
 use phoenix_common::engine::datapath::{RpcMessageRx, RpcMessageTx};
 use phoenix_common::storage::{ResourceCollection, SharedStorage};
 
@@ -37,76 +37,22 @@ pub mod hello {
     include!("proto.rs");
 }
 
-pub fn Gen_encrypt(a: &str, b: &str) -> String {
-    a.to_string()
-}
-pub fn Gen_decrypt(a: String, b: String) -> String {
-    a
-}
-pub fn Gen_update_window(a: u64, b: u64) -> u64 {
-    a.max(b)
-}
-pub fn Gen_current_timestamp() -> Instant {
-    Instant::now()
-}
-pub fn Gen_time_difference(a: Instant, b: Instant) -> f32 {
-    (a - b).as_secs_f64() as f32
-}
-pub fn Gen_random_f32(l: f32, r: f32) -> f32 {
-    rand::random::<f32>()
-}
-pub fn Gen_min_u64(a: u64, b: u64) -> u64 {
-    a.min(b)
-}
-pub fn Gen_min_f64(a: f64, b: f64) -> f64 {
-    a.min(b)
-}
-pub fn meta_id_readonly_tx() -> u64 {
-    0
-}
-pub fn meta_id_readonly_rx() -> u64 {
-    0
-}
-pub fn meta_status_readonly_tx() -> &'static str {
-    "success"
-}
-pub fn meta_status_readonly_rx(msg: &RpcMessageRx) -> &'static str {
-    let meta: &phoenix_api::rpc::MessageMeta = unsafe { &*msg.meta.as_ptr() };
-    if meta.status_code == StatusCode::Success {
-        "success"
-    } else {
-        "failure"
-    }
-}
-
 fn hello_HelloRequest_name_readonly(req: &hello::HelloRequest) -> String {
     let buf = &req.name as &[u8];
     String::from_utf8_lossy(buf).to_string().clone()
 }
 
-fn hello_HelloReply_message_readonly(req: &hello::HelloReply) -> String {
-    let buf = &req.message as &[u8];
-    String::from_utf8_lossy(buf).to_string().clone()
-}
-
-fn hello_HelloRequest_name_modify(req: &mut hello::HelloRequest, value: &[u8]) {
+fn encrypt(req: &mut hello::HelloRequest, value: &[u8]) {
     assert!(req.name.len() <= value.len());
     for i in 0..req.name.len() {
-        req.name[i] = value[i];
+        req.name[i] = value[i] ^ req.name[i];
     }
 }
 
-fn hello_HelloReply_message_modify(req: &mut hello::HelloReply, value: &[u8]) {
-    assert!(req.message.len() <= value.len());
-    for i in 0..req.message.len() {
-        req.message[i] = value[i];
-    }
-}
-
-pub(crate) struct GenencryptclientEngine {
+pub(crate) struct EncryptClientEngine {
     pub(crate) node: DataPathNode,
     pub(crate) indicator: Indicator,
-    pub(crate) config: GenencryptclientConfig,
+    pub(crate) config: EncryptClientConfig,
     pub(crate) password: String,
 }
 
@@ -118,13 +64,13 @@ enum Status {
 
 use Status::Progress;
 
-impl Engine for GenencryptclientEngine {
+impl Engine for EncryptClientEngine {
     fn activate<'a>(self: Pin<&'a mut Self>) -> BoxFuture<'a, EngineResult> {
         Box::pin(async move { self.get_mut().mainloop().await })
     }
 
     fn description(self: Pin<&Self>) -> String {
-        "GenencryptclientEngine".to_owned()
+        "EncryptClientEngine".to_owned()
     }
 
     #[inline]
@@ -137,16 +83,16 @@ impl Engine for GenencryptclientEngine {
 
         match request {
             control_plane::Request::NewConfig() => {
-                self.config = GenencryptclientConfig {};
+                self.config = EncryptClientConfig {};
             }
         }
         Ok(())
     }
 }
 
-impl_vertex_for_engine!(GenencryptclientEngine, node);
+impl_vertex_for_engine!(EncryptClientEngine, node);
 
-impl Decompose for GenencryptclientEngine {
+impl Decompose for EncryptClientEngine {
     fn flush(&mut self) -> Result<usize> {
         let mut work = 0;
         while !self.tx_inputs()[0].is_empty() || !self.rx_inputs()[0].is_empty() {
@@ -169,7 +115,7 @@ impl Decompose for GenencryptclientEngine {
     }
 }
 
-impl GenencryptclientEngine {
+impl EncryptClientEngine {
     pub(crate) fn restore(
         mut local: ResourceCollection,
         node: DataPathNode,
@@ -178,10 +124,10 @@ impl GenencryptclientEngine {
         let config = *local
             .remove("config")
             .unwrap()
-            .downcast::<GenencryptclientConfig>()
+            .downcast::<EncryptClientConfig>()
             .map_err(|x| anyhow!("fail to downcast, type_name={:?}", x.type_name()))?;
-        let mut password = "123456".to_string();
-        let engine = GenencryptclientEngine {
+        let mut password = "123456abcdefg".to_string();
+        let engine = EncryptClientEngine {
             node,
             indicator: Default::default(),
             config,
@@ -191,7 +137,7 @@ impl GenencryptclientEngine {
     }
 }
 
-impl GenencryptclientEngine {
+impl EncryptClientEngine {
     async fn mainloop(&mut self) -> EngineResult {
         loop {
             let mut work = 0;
@@ -236,7 +182,7 @@ fn materialize_nocopy_mutable_rx(msg: &RpcMessageRx) -> &mut hello::HelloRequest
     return req;
 }
 
-impl GenencryptclientEngine {
+impl EncryptClientEngine {
     fn check_input_queue(&mut self) -> Result<Status, DatapathError> {
         use phoenix_common::engine::datapath::TryRecvError;
 
@@ -246,9 +192,7 @@ impl GenencryptclientEngine {
                     EngineTxMessage::RpcMessage(msg) => {
                         let rpc_req = materialize_nocopy_tx(&msg);
                         let rpc_req_mut = materialize_nocopy_mutable_tx(&msg);
-                        let mut ori = hello_HelloRequest_name_readonly(&rpc_req);
-                        let mut encrypted = Gen_encrypt(&ori, &self.password);
-                        hello_HelloRequest_name_modify(rpc_req_mut, encrypted.as_bytes());
+                        encrypt(rpc_req_mut, &self.password.as_bytes());
 
                         let inner_gen = EngineTxMessage::RpcMessage(RpcMessageTx {
                             meta_buf_ptr: msg.meta_buf_ptr.clone(),

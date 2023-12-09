@@ -28,12 +28,12 @@ impl<T> From<SendError<T>> for DatapathError {
     }
 }
 
-use crate::config::GenencryptclientConfig;
-use crate::module::GenencryptclientAddon;
+use crate::config::EncryptClientConfig;
+use crate::module::EncryptClientAddon;
 
 #[no_mangle]
 pub fn init_addon(config_string: Option<&str>) -> InitFnResult<Box<dyn PhoenixAddon>> {
-    let config = GenencryptclientConfig::new(config_string)?;
-    let addon = GenencryptclientAddon::new(config);
+    let config = EncryptClientConfig::new(config_string)?;
+    let addon = EncryptClientAddon::new(config);
     Ok(Box::new(addon))
 }

@@ -38,69 +38,10 @@ pub mod hello {
     include!("proto.rs");
 }
 
-pub fn Gen_encrypt(a: &str, b: &str) -> String {
-    a.to_string()
-}
-pub fn Gen_decrypt(a: &str, b: &str) -> String {
-    a.to_string()
-}
-pub fn Gen_update_window(a: u64, b: u64) -> u64 {
-    a.max(b)
-}
-pub fn Gen_current_timestamp() -> Instant {
-    Instant::now()
-}
-pub fn Gen_time_difference(a: Instant, b: Instant) -> f32 {
-    (a - b).as_secs_f64() as f32
-}
-pub fn Gen_random_f32(l: f32, r: f32) -> f32 {
-    rand::random::<f32>()
-}
-pub fn Gen_min_u64(a: u64, b: u64) -> u64 {
-    a.min(b)
-}
-pub fn Gen_min_f64(a: f64, b: f64) -> f64 {
-    a.min(b)
-}
-pub fn meta_id_readonly_tx() -> u64 {
-    0
-}
-pub fn meta_id_readonly_rx() -> u64 {
-    0
-}
-pub fn meta_status_readonly_tx() -> &'static str {
-    "success"
-}
-pub fn meta_status_readonly_rx(msg: &RpcMessageRx) -> &'static str {
-    let meta: &phoenix_api::rpc::MessageMeta = unsafe { &*msg.meta.as_ptr() };
-    if meta.status_code == StatusCode::Success {
-        "success"
-    } else {
-        "failure"
-    }
-}
-
-fn hello_HelloRequest_name_readonly(req: &hello::HelloRequest) -> String {
-    let buf = &req.name as &[u8];
-    String::from_utf8_lossy(buf).to_string().clone()
-}
-
-fn hello_HelloReply_message_readonly(req: &hello::HelloReply) -> String {
-    let buf = &req.message as &[u8];
-    String::from_utf8_lossy(buf).to_string().clone()
-}
-
-fn hello_HelloRequest_name_modify(req: &mut hello::HelloRequest, value: &[u8]) {
+fn decrypt(req: &mut hello::HelloRequest, value: &[u8]) {
     assert!(req.name.len() <= value.len());
     for i in 0..req.name.len() {
-        req.name[i] = value[i];
-    }
-}
-
-fn hello_HelloReply_message_modify(req: &mut hello::HelloReply, value: &[u8]) {
-    assert!(req.message.len() <= value.len());
-    for i in 0..req.message.len() {
-        req.message[i] = value[i];
+        req.name[i] = value[i] ^ req.name[i];
     }
 }
 
@@ -188,7 +129,7 @@ impl DecryptServerEngine {
             .unwrap()
             .downcast::<MetaBufferPool>()
             .map_err(|x| anyhow!("fail to downcast, type_name={:?}", x.type_name()))?;
-        let mut password = "123456".to_string();
+        let mut password = "123456abcdefg".to_string();
         let engine = DecryptServerEngine {
             node,
             indicator: Default::default(),
@@ -279,9 +220,7 @@ impl DecryptServerEngine {
                     EngineRxMessage::RpcMessage(msg) => {
                         let rpc_req = materialize_nocopy_rx(&msg);
                         let rpc_req_mut = materialize_nocopy_mutable_rx(&msg);
-                        let mut encrypted = hello_HelloRequest_name_readonly(&rpc_req);
-                        let mut decrypted = Gen_decrypt(&encrypted, &self.password);
-                        hello_HelloRequest_name_modify(rpc_req_mut, decrypted.as_bytes());
+                        decrypt(rpc_req_mut, &self.password.as_bytes());
 
                         let inner_gen = EngineRxMessage::RpcMessage(RpcMessageRx {
                             meta: msg.meta.clone(),

@@ -1,0 +1,33 @@
+addon_engine = "DecryptServerEngine"
+tx_channels_replacements = [
+    [
+        "MrpcEngine",
+        "DecryptServerEngine",
+        0,
+        0,
+    ],
+    [
+        "DecryptServerEngine",
+        "TcpRpcAdapterEngine",
+        0,
+        0,
+    ],
+]
+rx_channels_replacements = [
+    [
+        "TcpRpcAdapterEngine",
+        "DecryptServerEngine",
+        0,
+        0,
+    ],
+    [
+        "DecryptServerEngine",
+        "MrpcEngine",
+        0,
+        0,
+    ],
+]
+group = ["MrpcEngine", "TcpRpcAdapterEngine"]
+op = "attach"
+config_string = '''
+'''

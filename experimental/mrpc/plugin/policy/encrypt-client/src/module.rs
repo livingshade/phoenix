@@ -6,8 +6,8 @@ use phoenix_common::engine::datapath::DataPathNode;
 use phoenix_common::engine::{Engine, EngineType};
 use phoenix_common::storage::ResourceCollection;
 
-use super::engine::GenencryptclientEngine;
-use crate::config::{create_log_file, GenencryptclientConfig};
+use super::engine::EncryptClientEngine;
+use crate::config::{create_log_file, EncryptClientConfig};
 
 use chrono::prelude::*;
 use itertools::iproduct;
@@ -15,25 +15,19 @@ use minstant::Instant;
 use rand::Rng;
 use std::collections::HashMap;
 
-use crate::engine::{
-    meta_id_readonly_rx, meta_id_readonly_tx, meta_status_readonly_rx, meta_status_readonly_tx,
-    Gen_current_timestamp, Gen_decrypt, Gen_encrypt, Gen_min_f64, Gen_min_u64, Gen_random_f32,
-    Gen_time_difference, Gen_update_window,
-};
-
-pub(crate) struct GenencryptclientEngineBuilder {
+pub(crate) struct EncryptClientEngineBuilder {
     node: DataPathNode,
-    config: GenencryptclientConfig,
+    config: EncryptClientConfig,
 }
 
-impl GenencryptclientEngineBuilder {
-    fn new(node: DataPathNode, config: GenencryptclientConfig) -> Self {
-        GenencryptclientEngineBuilder { node, config }
+impl EncryptClientEngineBuilder {
+    fn new(node: DataPathNode, config: EncryptClientConfig) -> Self {
+        EncryptClientEngineBuilder { node, config }
     }
     // TODO! LogFile
-    fn build(self) -> Result<GenencryptclientEngine> {
+    fn build(self) -> Result<EncryptClientEngine> {
         let mut password = "123456".to_string();
-        Ok(GenencryptclientEngine {
+        Ok(EncryptClientEngine {
             node: self.node,
             indicator: Default::default(),
             config: self.config,
@@ -42,22 +36,22 @@ impl GenencryptclientEngineBuilder {
     }
 }
 
-pub struct GenencryptclientAddon {
-    config: GenencryptclientConfig,
+pub struct EncryptClientAddon {
+    config: EncryptClientConfig,
 }
 
-impl GenencryptclientAddon {
-    pub const GENENCRYPTCLIENT_ENGINE: EngineType = EngineType("GenencryptclientEngine");
-    pub const ENGINES: &'static [EngineType] = &[GenencryptclientAddon::GENENCRYPTCLIENT_ENGINE];
+impl EncryptClientAddon {
+    pub const GENENCRYPTCLIENT_ENGINE: EngineType = EngineType("EncryptClientEngine");
+    pub const ENGINES: &'static [EngineType] = &[EncryptClientAddon::GENENCRYPTCLIENT_ENGINE];
 }
 
-impl GenencryptclientAddon {
-    pub fn new(config: GenencryptclientConfig) -> Self {
-        GenencryptclientAddon { config }
+impl EncryptClientAddon {
+    pub fn new(config: EncryptClientConfig) -> Self {
+        EncryptClientAddon { config }
     }
 }
 
-impl PhoenixAddon for GenencryptclientAddon {
+impl PhoenixAddon for EncryptClientAddon {
     fn check_compatibility(&self, _prev: Option<&Version>) -> bool {
         true
     }
@@ -73,7 +67,7 @@ impl PhoenixAddon for GenencryptclientAddon {
     fn migrate(&mut self, _prev_addon: Box<dyn PhoenixAddon>) {}
 
     fn engines(&self) -> &[EngineType] {
-        GenencryptclientAddon::ENGINES
+        EncryptClientAddon::ENGINES
     }
 
     fn update_config(&mut self, config: &str) -> Result<()> {
@@ -87,11 +81,11 @@ impl PhoenixAddon for GenencryptclientAddon {
         _pid: Pid,
         node: DataPathNode,
     ) -> Result<Box<dyn Engine>> {
-        if ty != GenencryptclientAddon::GENENCRYPTCLIENT_ENGINE {
+        if ty != EncryptClientAddon::GENENCRYPTCLIENT_ENGINE {
             bail!("invalid engine type {:?}", ty)
         }
 
-        let builder = GenencryptclientEngineBuilder::new(node, self.config);
+        let builder = EncryptClientEngineBuilder::new(node, self.config);
         let engine = builder.build()?;
         Ok(Box::new(engine))
     }
@@ -103,11 +97,11 @@ impl PhoenixAddon for GenencryptclientAddon {
         node: DataPathNode,
         prev_version: Version,
     ) -> Result<Box<dyn Engine>> {
-        if ty != GenencryptclientAddon::GENENCRYPTCLIENT_ENGINE {
+        if ty != EncryptClientAddon::GENENCRYPTCLIENT_ENGINE {
             bail!("invalid engine type {:?}", ty)
         }
 
-        let engine = GenencryptclientEngine::restore(local, node, prev_version)?;
+        let engine = EncryptClientEngine::restore(local, node, prev_version)?;
         Ok(Box::new(engine))
     }
 }

@@ -170,3 +170,15 @@ config_string = '''
 requests_per_sec = 4
 bucket_size = 1000
 '''
+
+[[addons]]
+name = "EncryptClient"
+lib_path = "plugins/libphoenix_encrypt_client.rlib"
+config_string = '''
+'''
+
+[[addons]]
+name = "DecryptServer"
+lib_path = "plugins/libphoenix_decrypt_server.rlib"
+config_string = '''
+'''
