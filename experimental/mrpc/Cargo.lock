@@ -1655,6 +1655,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "phoenix-api-policy-circuitbreaker"
+version = "0.1.0"
+dependencies = [
+ "itertools",
+ "phoenix-api",
+ "rand 0.8.5",
+ "serde",
+]
+
+[[package]]
 name = "phoenix-api-policy-decrypt-server"
 version = "0.1.0"
 dependencies = [
@@ -1873,6 +1883,30 @@ dependencies = [
  "phoenix-api-core",
  "serde",
  "static_assertions",
+]
+
+[[package]]
+name = "phoenix-circuitbreaker"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "chrono",
+ "futures",
+ "itertools",
+ "minstant",
+ "mrpc-derive",
+ "mrpc-marshal",
+ "nix",
+ "phoenix-api",
+ "phoenix-api-policy-circuitbreaker",
+ "phoenix_common",
+ "rand 0.8.5",
+ "serde",
+ "serde_json",
+ "shm",
+ "thiserror",
+ "toml",
 ]
 
 [[package]]
