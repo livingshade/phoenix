@@ -189,3 +189,8 @@ lib_path = "plugins/libphoenix_circuitbreaker.rlib"
 config_string = '''
 '''
 
+[[addons]]
+name = "CacheHack"
+lib_path = "plugins/libphoenix_cachehack.rlib"
+config_string = '''
+'''

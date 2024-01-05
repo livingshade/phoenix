@@ -119,6 +119,7 @@ members = [
     "phoenix-api/policy/encrypt-client",
     "phoenix-api/policy/decrypt-server",
     "phoenix-api/policy/circuitbreaker",
+    "phoenix-api/policy/cachehack",
     "plugin/mrpc",
     "plugin/mrpclb",
     "plugin/rpc_adapter",
@@ -148,6 +149,7 @@ members = [
     "plugin/policy/encrypt-client",
     "plugin/policy/decrypt-server",
     "plugin/policy/circuitbreaker",
+    "plugin/policy/cachehack",
     "examples/rpc_echo",
     "examples/rpc_bench",
     "examples/rpc_bench_plus",
@@ -298,6 +300,9 @@ path = "phoenix-api/policy/decrypt-server"
 
 [workspace.dependencies.phoenix-api-policy-circuitbreaker]
 path = "phoenix-api/policy/circuitbreaker"
+
+[workspace.dependencies.phoenix-api-policy-cachehack]
+path = "phoenix-api/policy/cachehack"
 
 [workspace.dependencies.mrpc-build]
 path = "mrpc-build"
