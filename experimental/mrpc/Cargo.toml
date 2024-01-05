@@ -120,6 +120,7 @@ members = [
     "phoenix-api/policy/decrypt-server",
     "phoenix-api/policy/circuitbreaker",
     "phoenix-api/policy/cachehack",
+    "phoenix-api/policy/lbstickyhack",
     "plugin/mrpc",
     "plugin/mrpclb",
     "plugin/rpc_adapter",
@@ -150,6 +151,7 @@ members = [
     "plugin/policy/decrypt-server",
     "plugin/policy/circuitbreaker",
     "plugin/policy/cachehack",
+    "plugin/policy/lbstickyhack",
     "examples/rpc_echo",
     "examples/rpc_bench",
     "examples/rpc_bench_plus",
@@ -303,6 +305,9 @@ path = "phoenix-api/policy/circuitbreaker"
 
 [workspace.dependencies.phoenix-api-policy-cachehack]
 path = "phoenix-api/policy/cachehack"
+
+[workspace.dependencies.phoenix-api-policy-lbstickyhack]
+path = "phoenix-api/policy/lbstickyhack"
 
 [workspace.dependencies.mrpc-build]
 path = "mrpc-build"

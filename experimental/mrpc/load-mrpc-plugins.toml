@@ -194,3 +194,9 @@ name = "CacheHack"
 lib_path = "plugins/libphoenix_cachehack.rlib"
 config_string = '''
 '''
+
+[[addons]]
+name = "LbstickyHack"
+lib_path = "plugins/libphoenix_lbstickyhack.rlib"
+config_string = '''
+'''

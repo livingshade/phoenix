@@ -1764,6 +1764,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "phoenix-api-policy-lbstickyhack"
+version = "0.1.0"
+dependencies = [
+ "itertools",
+ "phoenix-api",
+ "rand 0.8.5",
+ "serde",
+]
+
+[[package]]
 name = "phoenix-api-policy-logging"
 version = "0.1.0"
 dependencies = [
@@ -2189,6 +2199,30 @@ dependencies = [
  "phoenix-api",
  "phoenix-api-policy-hotel-acl",
  "phoenix_common",
+ "serde",
+ "serde_json",
+ "shm",
+ "thiserror",
+ "toml",
+]
+
+[[package]]
+name = "phoenix-lbstickyhack"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "chrono",
+ "futures",
+ "itertools",
+ "minstant",
+ "mrpc-derive",
+ "mrpc-marshal",
+ "nix",
+ "phoenix-api",
+ "phoenix-api-policy-lbstickyhack",
+ "phoenix_common",
+ "rand 0.8.5",
  "serde",
  "serde_json",
  "shm",
